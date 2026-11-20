@@ -1,0 +1,76 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    command: server /data --console-address ":9001"
+    user: "0:0"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-demo-access}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-demo-secret}
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    volumes:
+      - minio-data:/data
+
+  api:
+    build: .
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment: &service-env
+      APP_ENV: ${APP_ENV:-development}
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_BACKEND: s3
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-demo-access}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-demo-secret}
+      S3_BUCKET: docscan-artifacts
+      S3_REGION: us-east-1
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-12582912}
+      RESULT_TTL_SECONDS: ${RESULT_TTL_SECONDS:-86400}
+      OCR_LANGUAGES: ${OCR_LANGUAGES:-spa+eng}
+      DOCSCAN_MIN_DOCUMENT_AREA_RATIO: ${DOCSCAN_MIN_DOCUMENT_AREA_RATIO:-0.10}
+      DOCSCAN_MAX_DOCUMENT_AREA_RATIO: ${DOCSCAN_MAX_DOCUMENT_AREA_RATIO:-0.95}
+      DOCSCAN_OCR_MIN_HEIGHT: ${DOCSCAN_OCR_MIN_HEIGHT:-1200}
+      DOCSCAN_OCR_PSM: ${DOCSCAN_OCR_PSM:-6}
+      DOCSCAN_SCAN_MIN_HEIGHT: ${DOCSCAN_SCAN_MIN_HEIGHT:-1600}
+      OUTPUT_MODE: ${OUTPUT_MODE:-scan}
+      DOCSCAN_SCAN_TRIM_RATIO: ${DOCSCAN_SCAN_TRIM_RATIO:-0.015}
+      API_KEY: ${API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-30}
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  worker:
+    build: .
+    command: ["python", "-m", "app.worker"]
+    environment: *service-env
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+volumes:
+  redis-data:
+  minio-data:

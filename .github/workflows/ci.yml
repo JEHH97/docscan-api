@@ -24,3 +24,26 @@ jobs:
         run: make check
       - name: Verify exported contract is current
         run: python scripts/export_openapi.py && git diff --exit-code -- docs/openapi.json
+
+  image:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build local demo image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile.spaces
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: docscan-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke-test local demo image
+        run: bash scripts/smoke-image.sh docscan-api:ci 7860

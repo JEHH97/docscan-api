@@ -36,6 +36,7 @@ Do not put the token in `.env`, image build arguments, or a Dockerfile.
 ## Verify
 
 The API health check calls `/healthz`; the web health check calls `/healthz` on port `8080`.
+Build and exercise the API image locally with `docker build -f Dockerfile.spaces -t docscan-api:local . && bash scripts/smoke-image.sh docscan-api:local 7860`.
 
 ```sh
 curl --fail https://api.example.com/healthz

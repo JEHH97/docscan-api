@@ -1,9 +1,12 @@
 """FastAPI application factory and cross-cutting middleware."""
 
+import asyncio
+import contextlib
 import ipaddress
 import json
 import logging
 import time
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
 
@@ -15,7 +18,8 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import Response
 
 from app.api.routes import router
-from app.config import get_settings
+from app.config import Settings, get_settings
+from app.storage.factory import build_storage
 
 
 class JsonFormatter(logging.Formatter):
@@ -58,6 +62,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+async def _artifact_cleanup_loop(settings: Settings) -> None:
+    """Remove stale source and corrected images without relying on paid storage."""
+    while True:
+        try:
+            storage = build_storage(settings)
+            removed = await asyncio.to_thread(storage.prune_expired, settings.result_ttl_seconds)
+            if removed:
+                logging.getLogger(__name__).info(
+                    "expired_artifacts_removed", extra={"artifact_count": removed}
+                )
+        except Exception as exc:
+            logging.getLogger(__name__).warning(
+                "artifact_cleanup_failed", extra={"exception_type": type(exc).__name__}
+            )
+        await asyncio.sleep(min(300, settings.result_ttl_seconds))
+
+
 def create_app(redis_client: Redis | None = None) -> FastAPI:
     """Create the API and attach its Redis connection and routes."""
     settings = get_settings()
@@ -65,10 +86,22 @@ def create_app(redis_client: Redis | None = None) -> FastAPI:
     root = logging.getLogger()
     for handler in root.handlers:
         handler.setFormatter(JsonFormatter())
+
+    @contextlib.asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        cleanup_task = asyncio.create_task(_artifact_cleanup_loop(settings))
+        try:
+            yield
+        finally:
+            cleanup_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await cleanup_task
+
     app = FastAPI(
         title="DocScan API",
         description="Asynchronous document cleanup and OCR with a stable, versioned contract.",
         version="1.0.0",
+        lifespan=lifespan,
         openapi_tags=[
             {"name": "Scans", "description": "Submit and retrieve document scans."},
             {"name": "Health", "description": "Service readiness checks."},

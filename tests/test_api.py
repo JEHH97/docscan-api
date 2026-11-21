@@ -84,3 +84,13 @@ def test_upload_rejects_bad_type_and_unknown_scan() -> None:
     assert bad.status_code == 415
     missing = client.get("/v1/scans/00000000-0000-0000-0000-000000000001")
     assert missing.status_code == 404
+
+
+def test_upload_over_demo_size_limit_is_rejected() -> None:
+    """The public demo rejects uploads larger than five MiB before processing."""
+    client = TestClient(create_app(fakeredis.FakeRedis(decode_responses=True)))
+    response = client.post(
+        "/v1/scans",
+        files={"file": ("large.png", b"x" * (5 * 1024 * 1024 + 1), "image/png")},
+    )
+    assert response.status_code == 413

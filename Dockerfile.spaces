@@ -2,15 +2,20 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
     REDIS_URL=redis://127.0.0.1:6379/0 STORAGE_BACKEND=local \
-    LOCAL_STORAGE_DIR=/data/artifacts PORT=7860
+    LOCAL_STORAGE_DIR=/tmp/docscan-artifacts MAX_UPLOAD_BYTES=5242880 \
+    RESULT_TTL_SECONDS=3600 RATE_LIMIT_PER_MINUTE=10 PORT=7860 \
+    HOME=/home/user XDG_CACHE_HOME=/tmp/cache
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr tesseract-ocr-spa libglib2.0-0 libgl1 redis-server supervisor \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --uid 1000 --user-group --create-home --home-dir /home/user --shell /usr/sbin/nologin user
 WORKDIR /app
 COPY pyproject.toml requirements.txt ./
 COPY app ./app
 RUN pip install .
 COPY deploy/supervisord.conf /etc/supervisor/conf.d/docscan.conf
-RUN mkdir -p /data/artifacts
+RUN mkdir -p /tmp/docscan-artifacts /tmp/cache \
+    && chown -R 1000:1000 /home/user /tmp/docscan-artifacts /tmp/cache
 EXPOSE 7860
-CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
+USER 1000:1000
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/docscan.conf"]

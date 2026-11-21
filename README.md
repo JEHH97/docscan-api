@@ -103,7 +103,7 @@ make check
 
 ## Demo
 
-Live demo: [Add a public demo URL here](https://example.com/demo)
+Demo: _coming soon_
 
 ## License
 

@@ -1,5 +1,6 @@
 """S3-compatible artifact storage backed by boto3."""
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import boto3
@@ -39,3 +40,15 @@ class S3Storage:
 
     def delete(self, key: str) -> None:
         self.client.delete_object(Bucket=self.bucket, Key=key)
+
+    def prune_expired(self, ttl_seconds: int) -> int:
+        """Delete expired objects from the configured bucket."""
+        cutoff = datetime.now(UTC) - timedelta(seconds=ttl_seconds)
+        paginator = self.client.get_paginator("list_objects_v2")
+        removed = 0
+        for page in paginator.paginate(Bucket=self.bucket):
+            for item in page.get("Contents", []):
+                if item["LastModified"] < cutoff:
+                    self.delete(item["Key"])
+                    removed += 1
+        return removed

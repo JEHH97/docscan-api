@@ -1,12 +1,15 @@
 """Domain, repository, storage, and callback safety tests."""
 
 import asyncio
+import os
 import socket
+import time
 from pathlib import Path
 from typing import cast
 
 import fakeredis
 import pytest
+from app.config import Settings
 from app.domain import JobState, Point, ScanResult, WordBox
 from app.services.jobs import JobRepository
 from app.services.webhooks import validate_public_webhook
@@ -30,6 +33,15 @@ def test_domain_validates_box_confidence_and_state() -> None:
         WordBox(text="X", confidence=101, x=0, y=0, width=1, height=1)
     assert JobState.QUEUED.value == "queued"
     assert len(sample_result().page_corners) == 4
+
+
+def test_demo_settings_use_small_uploads_and_short_retention() -> None:
+    """The public demo defaults keep requests and retained data bounded."""
+    settings = Settings()
+    assert settings.api_key.get_secret_value() == ""
+    assert settings.max_upload_bytes == 5 * 1024 * 1024
+    assert settings.rate_limit_per_minute == 10
+    assert settings.result_ttl_seconds == 60 * 60
 
 
 def test_job_repository_lifecycle_and_expiry() -> None:
@@ -60,6 +72,20 @@ def test_local_storage_roundtrip_and_path_guard(tmp_path: Path) -> None:
         storage.load("scan/source.png")
     with pytest.raises(ValueError, match="escapes"):
         storage.save("../outside.txt", b"x", "text/plain")
+
+
+def test_local_storage_prunes_expired_artifacts(tmp_path: Path) -> None:
+    """The periodic cleanup removes expired files but preserves recent outputs."""
+    storage = LocalStorage(tmp_path / "artifacts")
+    storage.save("old/source.png", b"old", "image/png")
+    storage.save("new/corrected.png", b"new", "image/png")
+    old_file = tmp_path / "artifacts" / "old" / "source.png"
+    old_time = time.time() - 3_600
+    os.utime(old_file, (old_time, old_time))
+
+    assert storage.prune_expired(60) == 1
+    assert not old_file.exists()
+    assert storage.load("new/corrected.png") == b"new"
 
 
 def test_private_webhook_address_is_rejected() -> None:

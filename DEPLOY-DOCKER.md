@@ -2,10 +2,10 @@
 
 The public demo consists of two single-platform container images:
 
-- `ghcr.io/jehh97/docscan-api:latest` (also published as `vX.Y.Z` and `sha-<short>`). This is built from `Dockerfile.spaces`; it runs the API, RQ worker, and private loopback Redis in one container. It uses temporary `/tmp` storage and demo upload, rate, and retention limits.
-- `ghcr.io/jehh97/docscan-mobile-web:latest` (also published as `vX.Y.Z` and `sha-<short>`). This serves the static Expo web export using unprivileged nginx.
+- `ghcr.io/jehh97/docscan-api:v1.0.1` (also published as `sha-<short>`). This is built from `Dockerfile.spaces`; it runs the API, RQ worker, and private loopback Redis in one container. It uses temporary `/tmp` storage and demo upload, rate, and retention limits.
+- `ghcr.io/jehh97/docscan-mobile-web:v1.0.1` (also published as `sha-<short>`). This serves the static Expo web export using unprivileged nginx.
 
-Version tags are published for `v*.*.*` Git tags. `latest` is emitted for release tags and manual publication from `main`; the short commit tag is also emitted. Images target `linux/amd64`.
+Version tags are published for `v*.*.*` Git tags; the short commit tag is also emitted. Workflows build a local image, scan vulnerabilities and secrets with Trivy before publishing, block on CRITICAL findings with available fixes, and report HIGH findings. Images target `linux/amd64`; there is no floating `latest` tag.
 
 ## Pull and run with Compose
 
@@ -17,11 +17,11 @@ docker compose --env-file .env -f deploy/docker-compose.prod.yml pull
 docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d
 ```
 
-Both images expose only their service ports to the host: API `7860` and web `8080`. Put a TLS-terminating reverse proxy in front of them, route the public web hostname to `docscan-mobile-web:8080`, and the API hostname to `docscan-api:7860`. Do not expose Redis; it is bound to loopback inside the API container. Configure the web's runtime `API_URL` as the HTTPS API origin, and set API `CORS_ORIGINS` to the exact HTTPS web origin (scheme and hostname, no path or trailing slash). Keep `WEBHOOKS_ENABLED=false` for the public demo.
+Both services bind to host loopback by default: API `127.0.0.1:7860` and web `127.0.0.1:8080` (override the `*_BIND_ADDRESS` and `*_HOST_PORT` settings only when necessary). Put a TLS-terminating reverse proxy on the same host, route the web hostname to `127.0.0.1:8080`, and the API hostname to `127.0.0.1:7860`. Do not expose Redis; it is bound to loopback inside the API container. Configure the web's runtime `API_URL` as the HTTPS API origin, and set API `CORS_ORIGINS` to the exact HTTPS web origin (scheme and hostname, no path or trailing slash). Keep `WEBHOOKS_ENABLED=false` for the public demo.
 
-The API container defaults are `MAX_UPLOAD_BYTES=5242880`, `RATE_LIMIT_PER_MINUTE=10`, `RESULT_TTL_SECONDS=3600`, local temporary storage, and callbacks disabled. `API_KEY` is optional: leave it empty for a browser-accessible demo. When supplied, it protects API requests but cannot be embedded as a public web-client secret. The demo API is publicly usable without `API_KEY`; **do not send sensitive documents to it**. Uploads and scan artifacts are temporary and can disappear on restart.
+Both containers run with `no-new-privileges`, all Linux capabilities dropped, a read-only root filesystem, bounded memory/PIDs, and only a small `/tmp` tmpfs. The API container defaults are `MAX_UPLOAD_BYTES=5242880`, `RATE_LIMIT_PER_MINUTE=10`, `RESULT_TTL_SECONDS=3600`, local temporary storage, and callbacks disabled. `API_KEY` is optional: leave it empty for a browser-accessible demo. When supplied, it protects API requests but cannot be embedded as a public web-client secret. The demo API is publicly usable without `API_KEY`; **do not send sensitive documents to it**. Uploads and scan artifacts are temporary and can disappear on restart.
 
-The web container reads `API_URL` at startup from its environment and writes a public `config.js` before nginx starts. With an empty value, the app defaults to sample mode. Alternatively, build a custom image with `--build-arg EXPO_PUBLIC_API_URL=https://api.example.com`; build-time Expo variables are public and embedded in the web bundle. Runtime `API_URL` is preferred because it lets you change the API endpoint without rebuilding the image. Never put secrets in `API_URL` or any `EXPO_PUBLIC_*` build argument.
+The web container reads `API_URL` at startup from its environment and writes a public `/tmp/config.js` before nginx starts; the `/tmp` tmpfs makes this compatible with its read-only root filesystem. With an empty value, the app defaults to sample mode. Alternatively, build a custom image with `--build-arg EXPO_PUBLIC_API_URL=https://api.example.com`; build-time Expo variables are public and embedded in the web bundle. Runtime `API_URL` is preferred because it lets you change the API endpoint without rebuilding the image. Never put secrets in `API_URL` or any `EXPO_PUBLIC_*` build argument.
 
 ## Private package login
 

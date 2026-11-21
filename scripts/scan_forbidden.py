@@ -51,6 +51,8 @@ def main() -> int:
             "",
             content,
         )
+        phone_content = re.sub(r"\b[0-9a-fA-F]{64}\b", "", phone_content)
+        phone_content = re.sub(r"(?m)([A-Za-z0-9_.-]+==)[A-Za-z0-9.+!_-]+", r"\1", phone_content)
         if PHONE.search(phone_content):
             violations.append(f"{path.relative_to(ROOT)}: possible phone number")
     if violations:

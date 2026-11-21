@@ -95,7 +95,8 @@ Install Python 3.12 and Tesseract with English and Spanish language data, then r
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -e '.[dev]'
+pip install --require-hashes -r requirements.lock
+pip install --no-deps -e .
 make check
 ```
 

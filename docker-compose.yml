@@ -1,6 +1,6 @@
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.2-alpine3.21
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
@@ -11,7 +11,7 @@ services:
       retries: 10
 
   minio:
-    image: cgr.dev/chainguard/minio:latest
+    image: cgr.dev/chainguard/minio@sha256:e9cf6b99c226e9539ed0f14b6f00e37b07da153c7ba1f4f8709c807574b471ec
     command: server /data --console-address ":9001"
     user: "0:0"
     environment:

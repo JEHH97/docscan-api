@@ -24,7 +24,7 @@ def textured_synthetic_page() -> tuple[np.ndarray, np.ndarray]:
     image = np.repeat(fabric.astype(np.uint8), 3, axis=2)
     corners = np.array([[190, 60], [740, 110], [680, 740], [125, 690]], dtype=np.int32)
     page_mask = np.zeros((height, width), dtype=np.uint8)
-    cv2.fillConvexPoly(page_mask, corners, 255)
+    cv2.fillConvexPoly(page_mask, corners, 255)  # type: ignore[call-overload]
     light = np.tile(np.linspace(245, 218, width, dtype=np.float32), (height, 1))
     light -= np.tile(np.linspace(0, 13, height, dtype=np.float32)[:, None], (1, width))
     paper_noise = rng.normal(0, 2.5, (height, width))

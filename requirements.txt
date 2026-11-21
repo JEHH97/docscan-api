@@ -1,1 +1,2 @@
--e .[dev]
+# Dependency pins for development and testing; install the local project with --no-deps separately.
+-r requirements.lock

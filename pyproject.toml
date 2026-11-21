@@ -26,9 +26,9 @@ exclude = ["tests*", "deploy*", "artifacts*"]
 [project.optional-dependencies]
 dev = [
   "ruff>=0.9,<1.0",
-  "mypy>=1.14,<2.0",
+  "mypy>=1.14.1,<1.15",
   "pytest>=9.0.3,<10.0",
-  "pytest-cov>=6.0,<7.0",
+  "pytest-cov>=6.0,<8.0",
   "fakeredis[lua]>=2.26,<3.0",
   "types-requests>=2.32,<3.0",
   "boto3-stubs[s3]>=1.35,<2.0",

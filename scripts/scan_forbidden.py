@@ -25,6 +25,43 @@ BLOCKED = [
 PHONE = re.compile(r"(?<!\w)(?:\+?\d[\s().-]*){10,15}(?!\w)")
 
 
+def is_lock_file(path: Path) -> bool:
+    """Return whether a file is a generated dependency lock with version/hash data."""
+    return path.name == "uv.lock" or (
+        path.name.startswith("requirements") and path.name.endswith(".lock")
+    )
+
+
+def has_phone_number(content: str) -> bool:
+    """Return whether text contains a phone-like sequence."""
+    phone_content = re.sub(
+        r"\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\b",
+        "",
+        content,
+    )
+    phone_content = re.sub(r"\b[0-9a-fA-F]{64}\b", "", phone_content)
+    phone_content = re.sub(r"(?m)([A-Za-z0-9_.-]+==)[A-Za-z0-9.+!_-]+", r"\1", phone_content)
+    return PHONE.search(phone_content) is not None
+
+
+def file_violations(path: Path, root: Path = ROOT) -> list[str]:
+    """Return prohibited-content findings for one repository file."""
+    try:
+        content = path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError):
+        return []
+
+    relative_path = path.relative_to(root)
+    violations: list[str] = []
+    for term in BLOCKED:
+        if term.casefold() in content.casefold():
+            violations.append(f"{relative_path}: prohibited text")
+            break
+    if not is_lock_file(path) and has_phone_number(content):
+        violations.append(f"{relative_path}: possible phone number")
+    return violations
+
+
 def scanned_files() -> list[Path]:
     """List repository files while excluding virtual environments and caches."""
     return [
@@ -38,21 +75,7 @@ def main() -> int:
     """Return nonzero if any prohibited content is found."""
     violations: list[str] = []
     for path in scanned_files():
-        try:
-            content = path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            continue
-        for term in BLOCKED:
-            if term.casefold() in content.casefold():
-                violations.append(f"{path.relative_to(ROOT)}: prohibited text")
-                break
-        phone_content = re.sub(
-            r"\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\b",
-            "",
-            content,
-        )
-        if PHONE.search(phone_content):
-            violations.append(f"{path.relative_to(ROOT)}: possible phone number")
+        violations.extend(file_violations(path))
     if violations:
         print("Forbidden-content scan failed:", *violations, sep="\n- ", file=sys.stderr)
         return 1

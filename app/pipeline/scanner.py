@@ -238,7 +238,7 @@ def _scan_enhance(
         top = round((word.y / ocr_scale_y - margin_y) * scan_scale_y) - padding
         right = round(((word.x + word.width) / ocr_scale_x - margin_x) * scan_scale_x) + padding
         bottom = round(((word.y + word.height) / ocr_scale_y - margin_y) * scan_scale_y) + padding
-        cv2.rectangle(
+        cv2.rectangle(  # type: ignore[call-overload]
             text_mask,
             (max(0, left), max(0, top)),
             (min(scan.shape[1] - 1, right), min(scan.shape[0] - 1, bottom)),
@@ -283,7 +283,9 @@ def _scan_enhance(
             long_horizontal = delta_x >= scan.shape[1] * 0.50 and delta_y / delta_x <= 0.05
             long_vertical = delta_y >= scan.shape[0] * 0.12 and delta_x / delta_y <= 0.04
             if long_horizontal or long_vertical:
-                cv2.line(lines, (x1, y1), (x2, y2), 255, thickness=3)
+                cv2.line(  # type: ignore[call-overload]
+                    lines, (x1, y1), (x2, y2), 255, thickness=3
+                )
     lines = cv2.dilate(lines, np.ones((3, 3), dtype=np.uint8))
     text_mask = np.asarray(cv2.bitwise_or(text_mask, lines), dtype=np.uint8)
 

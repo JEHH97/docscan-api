@@ -31,6 +31,10 @@ updates:
           - minor
           - patch
 
+  # Dependabot's docker ecosystem scans the Dockerfile* files in `directory`
+  # ("/"), which covers Dockerfile, Dockerfile.dev and Dockerfile.spaces.
+  # Docker Hub images are named by their repository, so the official Python
+  # image is reported as `library/python` (`python` kept as a fallback).
   - package-ecosystem: docker
     directory: "/"
     schedule:
@@ -43,8 +47,10 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "library/python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "python"
-        update-types: ["version-update:semver-minor"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     groups:
       minor-and-patch:
         update-types:

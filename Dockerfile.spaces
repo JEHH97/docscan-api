@@ -1,4 +1,4 @@
-FROM python:3.12.8-slim-bookworm
+FROM python:3.15.2-slim-bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/JEHH97/docscan-api" \
       org.opencontainers.image.licenses="MIT" \

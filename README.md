@@ -105,6 +105,8 @@ make check
 
 Demo: _coming soon_
 
+For container images and the public Docker deployment, see [DEPLOY-DOCKER.md](DEPLOY-DOCKER.md).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

@@ -1,5 +1,7 @@
 # Deploy the public API demo to Hugging Face Spaces
 
+For the GHCR Docker images and a paired public web/API deployment, see [DEPLOY-DOCKER.md](DEPLOY-DOCKER.md).
+
 This guide publishes a small, public Docker Space for the existing API. The demo uses local temporary storage, a bundled Redis instance, a separate RQ worker process, and the API process in one container. It does not need a database, persistent storage, or a required API key.
 
 ## 1. Create a Space

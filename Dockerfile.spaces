@@ -1,12 +1,18 @@
-FROM python:3.12-slim
+FROM python:3.12.8-slim-bookworm
+
+LABEL org.opencontainers.image.source="https://github.com/JEHH97/docscan-api" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.title="DocScan API demo" \
+      org.opencontainers.image.description="Disposable public DocScan API demo with bundled Redis and RQ worker"
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
     REDIS_URL=redis://127.0.0.1:6379/0 STORAGE_BACKEND=local \
     LOCAL_STORAGE_DIR=/tmp/docscan-artifacts MAX_UPLOAD_BYTES=5242880 \
-    RESULT_TTL_SECONDS=3600 RATE_LIMIT_PER_MINUTE=10 WEBHOOKS_ENABLED=false PORT=7860 \
+    RESULT_TTL_SECONDS=3600 RATE_LIMIT_PER_MINUTE=10 WEBHOOKS_ENABLED=false \
+    CORS_ORIGINS=http://localhost:8080 PORT=7860 \
     HOME=/home/user XDG_CACHE_HOME=/tmp/cache
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    tesseract-ocr tesseract-ocr-spa libglib2.0-0 libgl1 redis-server supervisor \
+    tesseract-ocr tesseract-ocr-spa libglib2.0-0 libgl1 curl redis-server supervisor \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --uid 1000 --user-group --create-home --home-dir /home/user --shell /usr/sbin/nologin user
 WORKDIR /app
@@ -18,4 +24,6 @@ RUN mkdir -p /tmp/docscan-artifacts /tmp/cache \
     && chown -R 1000:1000 /home/user /tmp/docscan-artifacts /tmp/cache
 EXPOSE 7860
 USER 1000:1000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl --fail --silent http://127.0.0.1:7860/healthz || exit 1
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/docscan.conf"]

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     result_ttl_seconds: int = Field(default=60 * 60, gt=0)
     ocr_languages: str = "spa+eng"
     api_key: SecretStr = SecretStr("")
+    webhooks_enabled: bool = True
     cors_origins: str = "http://localhost:3000"
     rate_limit_per_minute: int = Field(default=10, ge=0)
     s3_endpoint_url: str = "http://localhost:9000"

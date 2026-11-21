@@ -65,6 +65,9 @@
               }
             }
           },
+          "400": {
+            "description": "Callback URLs are disabled by WEBHOOKS_ENABLED"
+          },
           "413": {
             "description": "Upload exceeds configured size limit"
           },
@@ -251,7 +254,7 @@
               }
             ],
             "title": "Callback Url",
-            "description": "Optional public HTTPS callback"
+            "description": "Optional public HTTP(S) callback. Callbacks are rejected with HTTP 400 when WEBHOOKS_ENABLED is false (the public demo default)."
           }
         },
         "type": "object",

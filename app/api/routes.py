@@ -58,6 +58,7 @@ def _image_type(data: bytes) -> str | None:
                 }
             },
         },
+        400: {"description": "Callback URLs are disabled by WEBHOOKS_ENABLED"},
         413: {"description": "Upload exceeds configured size limit"},
         415: {"description": "Unsupported or invalid image"},
     },
@@ -67,7 +68,15 @@ async def submit_scan(
     file: Annotated[UploadFile, File(description="JPEG, PNG, or WebP document image")],
     redis_client: Annotated[Redis, Depends(get_redis)],
     storage: Annotated[ArtifactStorage, Depends(get_storage)],
-    callback_url: Annotated[str | None, Form(description="Optional public HTTPS callback")] = None,
+    callback_url: Annotated[
+        str | None,
+        Form(
+            description=(
+                "Optional public HTTP(S) callback. Callbacks are rejected with HTTP 400 when "
+                "WEBHOOKS_ENABLED is false (the public demo default)."
+            )
+        ),
+    ] = None,
 ) -> ScanResponse:
     """Validate the upload, persist it, and enqueue background work."""
     data = await file.read(settings.max_upload_bytes + 1)
@@ -85,6 +94,11 @@ async def submit_scan(
     if decoded is None:
         raise HTTPException(status_code=415, detail="Image data could not be decoded")
     if callback_url:
+        if not settings.webhooks_enabled:
+            raise HTTPException(
+                status_code=400,
+                detail="Callbacks are disabled on this service (WEBHOOKS_ENABLED=false)",
+            )
         try:
             await validate_public_webhook(callback_url)
         except ValueError as exc:

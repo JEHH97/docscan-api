@@ -86,6 +86,23 @@ def test_upload_rejects_bad_type_and_unknown_scan() -> None:
     assert missing.status_code == 404
 
 
+def test_upload_rejects_callback_when_webhooks_are_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A deployment that disables callbacks rejects submitted callback URLs clearly."""
+    monkeypatch.setattr("app.api.routes.settings", Settings(webhooks_enabled=False))
+    client = TestClient(create_app(fakeredis.FakeRedis(decode_responses=True)))
+    response = client.post(
+        "/v1/scans",
+        data={"callback_url": "https://callback.example.com/hook"},
+        files={"file": ("sample.png", image_bytes(synthetic_page()), "image/png")},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Callbacks are disabled on this service (WEBHOOKS_ENABLED=false)"
+    )
+
+
 def test_upload_over_demo_size_limit_is_rejected() -> None:
     """The public demo rejects uploads larger than five MiB before processing."""
     client = TestClient(create_app(fakeredis.FakeRedis(decode_responses=True)))

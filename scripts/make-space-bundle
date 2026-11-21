@@ -14,6 +14,11 @@ case "$out" in
     ;;
 esac
 
+if ! grep -Fq 'WEBHOOKS_ENABLED=false' "$repo_root/Dockerfile.spaces"; then
+  echo "Dockerfile.spaces must disable callbacks for the public demo." >&2
+  exit 1
+fi
+
 rm -rf -- "$out"
 mkdir -p "$out/app" "$out/deploy"
 cp "$repo_root/Dockerfile.spaces" "$out/Dockerfile"

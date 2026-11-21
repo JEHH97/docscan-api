@@ -51,11 +51,14 @@ In **Space settings → Variables and secrets**, configure:
 | Variable | `STORAGE_BACKEND` | `local` |
 | Variable | `LOCAL_STORAGE_DIR` | `/tmp/docscan-artifacts` |
 | Variable | `REDIS_URL` | `redis://127.0.0.1:6379/0` |
+| Variable | `WEBHOOKS_ENABLED` | `false` |
 | Variable | `PORT` | `7860` |
 
 Use the exact deployed web origin in `CORS_ORIGINS`, without a trailing slash. Add more comma-separated origins only when needed. The container defaults already enforce the upload, rate, and retention limits shown above; listing them here makes the Space configuration explicit.
 
 **Secrets to generate:** none are required for the public demo. Leave `API_KEY` unset so a public browser can use the API. If you deliberately want to test a protected API instead, generate an optional secret with `openssl rand -hex 32`, then add it as a Space secret named `API_KEY`. When `API_KEY` is set, all scan endpoints require the matching `X-API-Key`, so the public demo is locked unless a client supplies it. Never add that secret to the mobile web build: every `EXPO_PUBLIC_*` value is visible to visitors.
+
+Callbacks are disabled in the public Space (`WEBHOOKS_ENABLED=false`) because it does not require an API key. Submitting a `callback_url` returns HTTP 400. Local development and Compose keep callbacks enabled by default; enable them only for a trusted deployment.
 
 Wait for the Space to finish building and show **Running**. Free Spaces may sleep when idle and take time to wake on the next request.
 

@@ -48,6 +48,7 @@ services:
       OUTPUT_MODE: ${OUTPUT_MODE:-scan}
       DOCSCAN_SCAN_TRIM_RATIO: ${DOCSCAN_SCAN_TRIM_RATIO:-0.015}
       API_KEY: ${API_KEY:-}
+      WEBHOOKS_ENABLED: ${WEBHOOKS_ENABLED:-true}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080}
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-30}
     depends_on:
